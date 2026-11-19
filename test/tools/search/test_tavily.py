@@ -95,6 +95,7 @@ class TestSearchExecution:
         tool_results_event: ToolResultsEvent = config.mock.call_args_list[1].args[0]
         part = tool_results_event.results[0].result.parts[0]
         assert isinstance(part, DataInput)
+        assert isinstance(part.data, SearchResponse)
         assert asdict(part.data)["results"] == SAMPLE_RAW["results"]
 
     @respx.mock

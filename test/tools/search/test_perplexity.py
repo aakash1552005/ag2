@@ -15,6 +15,7 @@ pytest.importorskip("perplexity")
 from ag2 import Agent, Context, DataInput, ImageInput, Variable, __version__
 from ag2.events import ModelResponse, ToolCallEvent, ToolCallsEvent, ToolResultsEvent
 from ag2.testing import TestConfig, TrackingConfig
+from ag2.tools.final.function_tool import FunctionToolSchema
 from ag2.tools.search.perplexity import (
     PerplexityImageMeta,
     PerplexitySearchResponse,
@@ -73,7 +74,7 @@ def _chat_response(
     return body
 
 
-SAMPLE_SEARCH_RESULTS = [
+SAMPLE_SEARCH_RESULTS: list[dict[str, Any]] = [
     {
         "title": "AG2 Framework",
         "url": "https://ag2.ai",
@@ -94,7 +95,7 @@ class TestSchema:
     async def test_default_schemas(self, context: Context) -> None:
         toolkit = PerplexitySearchToolkit(api_key="test")
 
-        schemas = list(await toolkit.schemas(context))
+        schemas = [s for s in await toolkit.schemas(context) if isinstance(s, FunctionToolSchema)]
 
         names = [s.function.name for s in schemas]
         assert names == ["perplexity_search", "perplexity_answer"]
@@ -102,7 +103,7 @@ class TestSchema:
     async def test_search_schema_has_query_param(self, context: Context) -> None:
         toolkit = PerplexitySearchToolkit(api_key="test")
 
-        schemas = list(await toolkit.schemas(context))
+        schemas = [s for s in await toolkit.schemas(context) if isinstance(s, FunctionToolSchema)]
         search_schema = next(s for s in schemas if s.function.name == "perplexity_search")
 
         assert search_schema.function.parameters == IsPartialDict({
@@ -113,7 +114,7 @@ class TestSchema:
     async def test_answer_schema_has_query_param(self, context: Context) -> None:
         toolkit = PerplexitySearchToolkit(api_key="test")
 
-        schemas = list(await toolkit.schemas(context))
+        schemas = [s for s in await toolkit.schemas(context) if isinstance(s, FunctionToolSchema)]
         answer_schema = next(s for s in schemas if s.function.name == "perplexity_answer")
 
         assert answer_schema.function.parameters == IsPartialDict({
@@ -126,7 +127,7 @@ class TestSchema:
         custom = toolkit.search(name="web_search", description="Custom search.")
 
         [schema] = list(await custom.schemas(context))
-
+        assert isinstance(schema, FunctionToolSchema)
         assert schema.function.name == "web_search"
         assert schema.function.description == "Custom search."
 
@@ -135,7 +136,7 @@ class TestSchema:
         custom = toolkit.answer(name="ask_perplexity", description="Custom answer.")
 
         [schema] = list(await custom.schemas(context))
-
+        assert isinstance(schema, FunctionToolSchema)
         assert schema.function.name == "ask_perplexity"
         assert schema.function.description == "Custom answer."
 

@@ -477,6 +477,8 @@ files = [
     "test/response",
     "test/spec",
     "test/stream",
+    "test/tools/sandbox",
+    "test/tools/search",
     "test/tools/skills",
     "test/test_agent_composition.py",
     "test/test_agent_resume.py",
