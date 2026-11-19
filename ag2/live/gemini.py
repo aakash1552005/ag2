@@ -100,6 +100,14 @@ class InputConfig:
     turn_coverage: gtypes.TurnCoverage | None = None
 
 
+def _resolve_client(client: Client | None, api_key: str | None) -> Client:
+    if client is None:
+        return Client(api_key=api_key) if api_key is not None else Client()
+    if api_key is not None:
+        raise ValueError("Pass either client or api_key, not both.")
+    return client
+
+
 class RealTimeConfig(RealtimeConfig):
     """Realtime config backed by Gemini's bidirectional Live API.
 
@@ -107,6 +115,8 @@ class RealTimeConfig(RealtimeConfig):
     open a websocket connection that pumps captured audio into the API
     and emits transcription, audio, and tool-call events on the supplied
     context.
+
+    Takes an ``api_key`` or a reusable ``client``, not both.
     """
 
     def __init__(
@@ -119,6 +129,7 @@ class RealTimeConfig(RealtimeConfig):
         temperature: float | None = None,
         config: gtypes.LiveConnectConfigDict | None = None,
         client: Client | None = None,
+        api_key: str | None = None,
     ) -> None:
         self.model = model
 
@@ -166,7 +177,7 @@ class RealTimeConfig(RealtimeConfig):
         self._config: gtypes.LiveConnectConfigDict = base
         self._config_overrides: gtypes.LiveConnectConfigDict = config or {}
 
-        self.client = client or Client()
+        self.client = _resolve_client(client, api_key)
 
     def _build_session(
         self,
