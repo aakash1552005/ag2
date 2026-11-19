@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from ag2 import Agent
-from ag2.events import ToolCallEvent, ToolResultsEvent
+from ag2.events import TextInput, ToolCallEvent, ToolResultsEvent
 from ag2.exceptions import ToolNotFoundError
 from ag2.testing import TestConfig, TrackingConfig
 from ag2.tools.skills import LocalRuntime, SkillPlugin
@@ -89,7 +89,9 @@ class TestSkillPlugin:
         # Second LLM call receives the tool result; verify SKILL.md was loaded.
         tool_result_msg: ToolResultsEvent = tracking.mock.call_args_list[1][0][0]
         assert tool_result_msg.results[0].name == "load_skill"
-        assert "React Best Practices" in tool_result_msg.results[0].result.parts[0].content
+        part = tool_result_msg.results[0].result.parts[0]
+        assert isinstance(part, TextInput)
+        assert "React Best Practices" in part.content
 
     async def test_run_skill_script_tool_runs(self, skill_tree: Path) -> None:
         tracking = TrackingConfig(
@@ -107,7 +109,9 @@ class TestSkillPlugin:
 
         # Second LLM call receives the tool result; verify the script ran.
         tool_result_msg: ToolResultsEvent = tracking.mock.call_args_list[1][0][0]
-        assert "scaffold" in tool_result_msg.results[0].result.parts[0].content
+        part = tool_result_msg.results[0].result.parts[0]
+        assert isinstance(part, TextInput)
+        assert "scaffold" in part.content
 
     async def test_gates_out_read_resource_when_no_skill_has_resources(self, tmp_path: Path) -> None:
         # A skill with a script but no resources: run_skill_script is registered,
@@ -160,4 +164,6 @@ class TestSkillPlugin:
         assert "<description>from project</description>" in catalog
         assert "from global" not in catalog
         tool_result_msg: ToolResultsEvent = tracking.mock.call_args_list[1][0][0]
-        assert "project body" in tool_result_msg.results[0].result.parts[0].content
+        part = tool_result_msg.results[0].result.parts[0]
+        assert isinstance(part, TextInput)
+        assert "project body" in part.content

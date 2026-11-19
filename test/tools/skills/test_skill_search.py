@@ -14,9 +14,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from ag2 import Context
-from ag2.events import ToolCallEvent, ToolErrorEvent
+from ag2.events import TextInput, ToolCallEvent, ToolErrorEvent
 from ag2.exceptions import InvalidSkillError, SkillInstallError
 from ag2.stream import MemoryStream
+from ag2.tools.final.function_tool import FunctionToolSchema
 from ag2.tools.skills import LocalRuntime, SkillSearchToolkit
 from ag2.tools.skills.skill_search.client import SkillsClient
 from ag2.tools.skills.skill_search.extractor import extract_skill
@@ -466,7 +467,7 @@ async def test_toolkit_exposes_all_tools(tmp_path: Path, context: Context) -> No
 
     schemas = list(await toolkit.schemas(context))
 
-    names = {s.function.name for s in schemas}  # type: ignore[union-attr]
+    names = {s.function.name for s in schemas if isinstance(s, FunctionToolSchema)}
     assert names == {
         "search_skills",
         "install_skill",
@@ -490,8 +491,9 @@ async def test_load_skill_name_not_pinned_to_construction_time_skills(tmp_path: 
     toolkit = SkillSearchToolkit(LocalRuntime(dir=tmp_path / "skills"))
 
     [schema] = await toolkit.load_skill().schemas(context)
+    assert isinstance(schema, FunctionToolSchema)
 
-    name_prop = schema.function.parameters["properties"]["name"]  # type: ignore[union-attr]
+    name_prop = schema.function.parameters["properties"]["name"]
     assert name_prop["type"] == "string"
     # No pinning: neither a Literal enum (2+ skills) nor a const (1 skill).
     assert "enum" not in name_prop
@@ -521,7 +523,9 @@ async def test_load_skill_accepts_skill_installed_after_construction(tmp_path: P
     result = await load_tool(event, context)
 
     assert not isinstance(result, ToolErrorEvent)
-    assert "Skill B body" in result.result.parts[0].content
+    part = result.result.parts[0]
+    assert isinstance(part, TextInput)
+    assert "Skill B body" in part.content
 
 
 @pytest.mark.asyncio
@@ -539,4 +543,5 @@ async def test_toolkit_individual_tools_accessible(tmp_path: Path, context: Cont
     )
     for attr in tools:
         [schema] = await getattr(toolkit, attr)().schemas(context)
-        assert schema.function.name == attr  # type: ignore[union-attr]
+        assert isinstance(schema, FunctionToolSchema)
+        assert schema.function.name == attr

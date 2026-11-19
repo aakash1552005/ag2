@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 from ag2 import Agent, Context, Depends, Variable
 from ag2.context import ConversationContext
-from ag2.events import ToolCallEvent, ToolResultsEvent
+from ag2.events import TextInput, ToolCallEvent, ToolResultsEvent
 from ag2.exceptions import SkillError, SkillNotFoundError, ToolNotFoundError
 from ag2.stream import MemoryStream
 from ag2.testing import TestConfig, TrackingConfig
@@ -27,7 +27,9 @@ def _call(tool: str, **arguments: object) -> ToolCallEvent:
 def _tool_result(tracking: TrackingConfig, call: int = 1) -> str:
     """Content of the first tool result fed back to the LLM on the *call*-th turn."""
     msg: ToolResultsEvent = tracking.mock.call_args_list[call][0][0]
-    return msg.results[0].result.parts[0].content
+    part = msg.results[0].result.parts[0]
+    assert isinstance(part, TextInput)
+    return part.content
 
 
 @pytest.mark.asyncio
@@ -344,8 +346,8 @@ class TestDependencyInjection:
         skill = MemorySkill(name="s", description="d")
 
         @skill.script
-        def peek(ctx: Context) -> str:  # type: ignore[valid-type]
-            return ctx.variables["k"]
+        def peek(ctx: Context) -> str:
+            return str(ctx.variables["k"])
 
         tracking = TrackingConfig(TestConfig(_call("run_skill_script", name="s", script="peek"), "done"))
         agent = Agent("a", config=tracking, plugins=[SkillPlugin(skill)])
